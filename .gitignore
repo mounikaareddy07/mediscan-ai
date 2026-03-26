@@ -1,0 +1,11 @@
+__pycache__/
+*.pyc
+*.pyo
+*.db
+uploads/
+heatmaps/
+.env
+venv/
+.vscode/
+check_users.py
+view_db.py
