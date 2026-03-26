@@ -475,6 +475,19 @@ def serve_heatmap(filename):
     return send_from_directory(HEATMAP_FOLDER, filename)
 
 
+# ─── Admin Endpoint (View Users) ─────────────────────────────────────
+
+@app.route('/api/admin/users', methods=['GET'])
+def admin_users():
+    """View all registered users (for admin/debugging)."""
+    db = get_db()
+    users = db.execute('SELECT id, full_name, username, email, created_at FROM users').fetchall()
+    db.close()
+    user_list = [{'id': u['id'], 'full_name': u['full_name'], 'username': u['username'],
+                  'email': u['email'], 'created_at': u['created_at']} for u in users]
+    return jsonify({'success': True, 'total': len(user_list), 'users': user_list})
+
+
 # ─── Initialize and Run ──────────────────────────────────────────────
 
 # Initialize DB on import (needed for production)
