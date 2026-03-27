@@ -423,14 +423,15 @@ function renderResultPage(data) {
 function renderDashboardPage(history) {
     const user = getUser();
     const totalScans = history.length;
-    const abnormal = history.filter(s => s.prediction !== 'Normal').length;
-    const normal = history.filter(s => s.prediction === 'Normal').length;
+    const safePreds = ['Normal', 'NORMAL', 'notumor', 'benign', 'not fractured'];
+    const normal = history.filter(s => safePreds.includes(s.prediction)).length;
+    const abnormal = totalScans - normal;
     const avgRisk = totalScans > 0 ? (history.reduce((a, s) => a + s.risk_score, 0) / totalScans).toFixed(1) : 0;
 
     let tableRows = '';
     if (history.length === 0) {
         tableRows = `
-        <tr><td colspan="6">
+        <tr><td colspan="7">
             <div class="empty-state">
                 <div class="empty-state-icon">📭</div>
                 <h3>No scans yet</h3>
@@ -440,14 +441,15 @@ function renderDashboardPage(history) {
         </td></tr>`;
     } else {
         tableRows = history.map(scan => {
-            const predClass = scan.prediction.toLowerCase();
+            const isSafe = safePreds.includes(scan.prediction);
+            const badgeClass = isSafe ? 'normal' : 'pneumonia';
             const riskColor = scan.risk_score > 60 ? 'var(--danger)' : scan.risk_score > 30 ? 'var(--warning)' : 'var(--success)';
             const date = new Date(scan.date).toLocaleDateString('en-US', {month:'short',day:'numeric',year:'numeric'});
             return `
             <tr>
                 <td><img class="scan-thumb" src="${API_BASE}${scan.scan_url}" alt="scan"></td>
                 <td>${scan.filename}</td>
-                <td><span class="status-badge ${predClass}">${scan.prediction}</span></td>
+                <td><span class="status-badge ${badgeClass}">${scan.prediction}</span></td>
                 <td>
                     <span class="risk-bar"><span class="risk-bar-fill" style="width:${scan.risk_score}%;background:${riskColor}"></span></span>
                     ${scan.risk_score}%

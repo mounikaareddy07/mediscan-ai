@@ -1,7 +1,11 @@
 /* MediScan AI - Dashboard Module
-   Handles scan history fetching, display, and Chart.js visualizations */
+   Handles scan history fetching, display, and Chart.js visualizations
+   Supports all 5 scan types dynamically */
 
 let scanHistory = [];
+
+// ─── Normal/Safe prediction classes ──────────────────────────────────
+const SAFE_PREDICTIONS = ['Normal', 'NORMAL', 'notumor', 'benign', 'not fractured'];
 
 // ─── Load Dashboard ──────────────────────────────────────────────────
 async function loadDashboard() {
@@ -18,7 +22,8 @@ async function loadDashboard() {
             // Initialize charts after DOM is ready
             setTimeout(() => initDashboardCharts(scanHistory), 100);
         } else {
-            showToast('Failed to load history.', 'error');
+            showToast('Session expired. Please log in again.', 'error');
+            logout();
         }
     } catch (err) {
         showToast('Connection error loading dashboard.', 'error');
@@ -36,24 +41,43 @@ function initDashboardCharts(history) {
     Chart.defaults.color = '#9ba4c4';
     Chart.defaults.borderColor = 'rgba(255,255,255,0.05)';
 
-    // Pie Chart - Results Distribution
+    // Pie Chart - Dynamic Results Distribution
     const pieCtx = document.getElementById('dashboard-pie-chart');
     if (pieCtx) {
-        const normal = history.filter(s => s.prediction === 'Normal').length;
-        const pneumonia = history.filter(s => s.prediction === 'Pneumonia').length;
-        const tb = history.filter(s => s.prediction === 'Tuberculosis').length;
+        // Dynamically count predictions
+        const predCounts = {};
+        history.forEach(s => {
+            const pred = s.prediction || 'Unknown';
+            predCounts[pred] = (predCounts[pred] || 0) + 1;
+        });
+
+        const labels = Object.keys(predCounts);
+        const values = Object.values(predCounts);
+
+        // Generate colors dynamically based on safe/unsafe
+        const colors = labels.map(label => {
+            if (SAFE_PREDICTIONS.includes(label)) return 'rgba(46, 213, 115, 0.8)';
+            // Assign distinct colors to each abnormal prediction
+            const abnormalColors = [
+                'rgba(255, 165, 2, 0.8)',
+                'rgba(255, 71, 87, 0.8)',
+                'rgba(0, 212, 255, 0.8)',
+                'rgba(124, 92, 252, 0.8)',
+                'rgba(255, 107, 157, 0.8)',
+                'rgba(255, 215, 0, 0.8)'
+            ];
+            const abnormalLabels = labels.filter(l => !SAFE_PREDICTIONS.includes(l));
+            const idx = abnormalLabels.indexOf(label);
+            return abnormalColors[idx % abnormalColors.length];
+        });
 
         new Chart(pieCtx, {
             type: 'doughnut',
             data: {
-                labels: ['Normal', 'Pneumonia', 'Tuberculosis'],
+                labels: labels,
                 datasets: [{
-                    data: [normal, pneumonia, tb],
-                    backgroundColor: [
-                        'rgba(46, 213, 115, 0.8)',
-                        'rgba(255, 165, 2, 0.8)',
-                        'rgba(255, 71, 87, 0.8)'
-                    ],
+                    data: values,
+                    backgroundColor: colors,
                     borderColor: 'rgba(6, 10, 26, 1)',
                     borderWidth: 3,
                     hoverOffset: 8
@@ -181,11 +205,10 @@ async function viewScanDetail(scanId) {
                 insights: scan.insights,
                 scan_url: scan.scan_url,
                 heatmap_url: scan.heatmap_url,
-                probabilities: {
-                    Normal: scan.prediction === 'Normal' ? scan.confidence : (100 - scan.risk_score) * 0.8,
-                    Pneumonia: scan.prediction === 'Pneumonia' ? scan.confidence : scan.risk_score * 0.5,
-                    Tuberculosis: scan.prediction === 'Tuberculosis' ? scan.confidence : scan.risk_score * 0.3
-                }
+                scan_type: scan.scan_type || 'chest_xray',
+                scan_type_display: scan.scan_type_display || 'Medical Scan',
+                real_model: scan.real_model || false,
+                probabilities: scan.probabilities || _estimateProbabilities(scan)
             };
             renderApp('result', window.lastScanResult);
         } else {
@@ -195,4 +218,23 @@ async function viewScanDetail(scanId) {
         hideLoading();
         showToast('Failed to load scan details.', 'error');
     }
+}
+
+// ─── Estimate Probabilities From Scan Data ───────────────────────────
+function _estimateProbabilities(scan) {
+    // Build estimated probabilities when none are stored
+    const pred = scan.prediction;
+    const conf = scan.confidence || 80;
+    const remaining = 100 - conf;
+
+    // Return a simple 2-class estimate
+    const probs = {};
+    probs[pred] = conf;
+
+    if (SAFE_PREDICTIONS.includes(pred)) {
+        probs['Abnormal'] = remaining;
+    } else {
+        probs['Normal'] = remaining;
+    }
+    return probs;
 }
