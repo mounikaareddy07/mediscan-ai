@@ -1,7 +1,19 @@
 /* MediScan AI - Scan Upload & Analysis Module
-   Handles drag/drop upload, preview, and API analysis calls */
+   Handles drag/drop upload, preview, scan type selection, and API analysis calls */
 
 let selectedFile = null;
+let selectedScanType = 'chest_xray';
+
+// ─── Scan Type Selection ─────────────────────────────────────────────
+function selectScanType(card) {
+    // Remove selected from all cards
+    document.querySelectorAll('.scan-type-card').forEach(c => {
+        c.classList.remove('selected');
+    });
+    // Add selected to clicked card
+    card.classList.add('selected');
+    selectedScanType = card.dataset.type;
+}
 
 // ─── Drag & Drop Handlers ────────────────────────────────────────────
 function handleDragOver(e) {
@@ -96,10 +108,19 @@ async function analyzeScan() {
         return;
     }
 
-    showLoading('Analyzing scan with AI...');
+    const scanTypeNames = {
+        'chest_xray': 'Chest X-ray',
+        'brain_tumor': 'Brain MRI',
+        'skin_lesion': 'Skin Lesion',
+        'retinal': 'Retinal OCT',
+        'bone_fracture': 'Bone X-ray'
+    };
+
+    showLoading(`Analyzing ${scanTypeNames[selectedScanType] || 'scan'} with AI...`);
 
     const formData = new FormData();
     formData.append('scan', selectedFile);
+    formData.append('scan_type', selectedScanType);
 
     try {
         const res = await fetch(`${API_BASE}/api/analyze`, {
@@ -130,23 +151,46 @@ function initProbabilityChart(probabilities) {
     const ctx = document.getElementById('probability-chart');
     if (!ctx) return;
 
+    const labels = Object.keys(probabilities);
+    const values = Object.values(probabilities);
+
+    // Generate colors based on number of classes
+    const colorPalettes = {
+        2: [
+            { bg: 'rgba(46, 213, 115, 0.7)', border: 'rgba(46, 213, 115, 1)' },
+            { bg: 'rgba(255, 71, 87, 0.7)', border: 'rgba(255, 71, 87, 1)' }
+        ],
+        3: [
+            { bg: 'rgba(46, 213, 115, 0.7)', border: 'rgba(46, 213, 115, 1)' },
+            { bg: 'rgba(255, 165, 2, 0.7)', border: 'rgba(255, 165, 2, 1)' },
+            { bg: 'rgba(255, 71, 87, 0.7)', border: 'rgba(255, 71, 87, 1)' }
+        ],
+        4: [
+            { bg: 'rgba(46, 213, 115, 0.7)', border: 'rgba(46, 213, 115, 1)' },
+            { bg: 'rgba(0, 212, 255, 0.7)', border: 'rgba(0, 212, 255, 1)' },
+            { bg: 'rgba(255, 165, 2, 0.7)', border: 'rgba(255, 165, 2, 1)' },
+            { bg: 'rgba(255, 71, 87, 0.7)', border: 'rgba(255, 71, 87, 1)' }
+        ]
+    };
+
+    // Default: generate colors dynamically
+    const palette = colorPalettes[labels.length] || labels.map((_, i) => {
+        const hue = (i * 360 / labels.length + 120) % 360;
+        return {
+            bg: `hsla(${hue}, 70%, 55%, 0.7)`,
+            border: `hsla(${hue}, 70%, 55%, 1)`
+        };
+    });
+
     new Chart(ctx, {
         type: 'bar',
         data: {
-            labels: ['Normal', 'Pneumonia', 'Tuberculosis'],
+            labels: labels,
             datasets: [{
                 label: 'Probability (%)',
-                data: [probabilities.Normal, probabilities.Pneumonia, probabilities.Tuberculosis],
-                backgroundColor: [
-                    'rgba(46, 213, 115, 0.7)',
-                    'rgba(255, 165, 2, 0.7)',
-                    'rgba(255, 71, 87, 0.7)'
-                ],
-                borderColor: [
-                    'rgba(46, 213, 115, 1)',
-                    'rgba(255, 165, 2, 1)',
-                    'rgba(255, 71, 87, 1)'
-                ],
+                data: values,
+                backgroundColor: palette.map(p => p.bg),
+                borderColor: palette.map(p => p.border),
                 borderWidth: 2,
                 borderRadius: 8
             }]

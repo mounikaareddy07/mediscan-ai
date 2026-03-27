@@ -392,6 +392,53 @@ body::before {
     .stats-grid{grid-template-columns:1fr 1fr} .metrics-row{grid-template-columns:1fr}
 }
 
+/* ─── Scan Type Selector ─── */
+.scan-type-section { margin-bottom:2rem; }
+.scan-type-label { font-family:var(--font-heading); font-size:1rem; font-weight:600; color:var(--text-secondary); margin-bottom:1rem; text-align:center; }
+.scan-type-grid { display:grid; grid-template-columns:repeat(5, 1fr); gap:12px; margin-bottom:1.5rem; }
+.scan-type-card {
+    background:var(--gradient-card); border:1.5px solid var(--border-color);
+    border-radius:var(--radius-lg); padding:1.2rem 0.8rem; text-align:center;
+    cursor:pointer; transition:var(--transition-base); position:relative; overflow:hidden;
+}
+.scan-type-card::before {
+    content:''; position:absolute; top:0; left:0; right:0; height:2px;
+    background:var(--gradient-primary); transform:scaleX(0); transition:transform 0.3s ease;
+}
+.scan-type-card:hover { border-color:var(--border-glow); transform:translateY(-2px); box-shadow:var(--shadow-glow); }
+.scan-type-card:hover::before { transform:scaleX(1); }
+.scan-type-card.selected {
+    border-color:var(--accent-cyan); background:rgba(0,212,255,0.06);
+    box-shadow:0 0 20px rgba(0,212,255,0.15), inset 0 0 20px rgba(0,212,255,0.05);
+}
+.scan-type-card.selected::before { transform:scaleX(1); }
+.scan-type-icon { font-size:2rem; margin-bottom:0.5rem; }
+.scan-type-name { font-family:var(--font-heading); font-size:0.88rem; font-weight:600; color:var(--text-white); margin-bottom:0.2rem; }
+.scan-type-desc { font-size:0.72rem; color:var(--text-muted); line-height:1.3; }
+
+/* ─── Model Badge ─── */
+.model-badge {
+    display:inline-flex; align-items:center; gap:4px; padding:4px 12px;
+    border-radius:var(--radius-full); font-size:0.75rem; font-weight:600;
+    vertical-align:middle; margin-left:8px;
+}
+.model-badge.real { background:rgba(46,213,115,0.12); border:1px solid rgba(46,213,115,0.3); color:var(--success); }
+.model-badge.simulated { background:rgba(255,165,2,0.12); border:1px solid rgba(255,165,2,0.3); color:var(--warning); }
+.result-scan-type { font-size:1rem; color:var(--text-secondary); margin-top:0.5rem; }
+
+/* ─── Prediction Badge (Dynamic) ─── */
+.prediction-abnormal { background:rgba(255,165,2,0.12); border:1px solid rgba(255,165,2,0.3); color:var(--warning); }
+
+/* ─── Responsive: Scan Type Grid ─── */
+@media(max-width:768px){
+    .scan-type-grid { grid-template-columns:repeat(3, 1fr); }
+}
+@media(max-width:480px){
+    .scan-type-grid { grid-template-columns:repeat(2, 1fr); }
+    .scan-type-icon { font-size:1.5rem; }
+    .scan-type-name { font-size:0.8rem; }
+}
+
 /* ─── Utilities ─── */
 .hidden{display:none!important} .text-center{text-align:center}
 .text-cyan{color:var(--accent-cyan)} .text-success{color:var(--success)} .text-warning{color:var(--warning)} .text-danger{color:var(--danger)}

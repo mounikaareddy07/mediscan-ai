@@ -14,7 +14,7 @@ from werkzeug.utils import secure_filename
 # Import local modules
 from database.db import get_db, init_db
 from utils.auth import hash_password, verify_password, generate_token, validate_signup
-from models.ai_model import predict
+from models.ai_model import predict, get_available_models
 from utils.heatmap import generate_heatmap
 
 # ─── App Configuration ───────────────────────────────────────────────
@@ -146,6 +146,12 @@ def get_current_user():
 
 # ─── Scan Analysis Endpoints ─────────────────────────────────────────
 
+@app.route('/api/models', methods=['GET'])
+def list_models():
+    """Return available AI models and their status."""
+    return jsonify({'success': True, 'models': get_available_models()})
+
+
 @app.route('/api/analyze', methods=['POST'])
 def analyze_scan():
     """Upload and analyze a medical scan image."""
@@ -163,14 +169,17 @@ def analyze_scan():
     if not allowed_file(file.filename):
         return jsonify({'success': False, 'message': 'Invalid file type. Please upload PNG, JPG, or JPEG'}), 400
 
+    # Get scan type from form data (default: chest_xray)
+    scan_type = request.form.get('scan_type', 'chest_xray')
+
     # Save uploaded file
     original_filename = secure_filename(file.filename)
     unique_filename = f"{uuid.uuid4().hex}_{original_filename}"
     file_path = os.path.join(UPLOAD_FOLDER, unique_filename)
     file.save(file_path)
 
-    # Run AI prediction
-    result = predict(file_path)
+    # Run AI prediction with scan type
+    result = predict(file_path, scan_type=scan_type)
 
     if not result['success']:
         return jsonify({'success': False, 'message': 'Analysis failed. Please try again.'}), 500
@@ -178,7 +187,7 @@ def analyze_scan():
     # Generate heatmap
     heatmap_filename = f"heatmap_{unique_filename}"
     heatmap_path = os.path.join(HEATMAP_FOLDER, heatmap_filename)
-    generate_heatmap(file_path, result['prediction'], heatmap_path)
+    generate_heatmap(file_path, result['prediction'], heatmap_path, scan_type=scan_type)
 
     # Save scan record to database
     db = get_db()
@@ -202,6 +211,9 @@ def analyze_scan():
         'confidence': result['confidence'],
         'insights': result['insights'],
         'probabilities': result['probabilities'],
+        'scan_type': scan_type,
+        'scan_type_display': result.get('scan_type_display', scan_type),
+        'real_model': result.get('real_model', False),
         'scan_url': f'/uploads/{unique_filename}',
         'heatmap_url': f'/heatmaps/{heatmap_filename}'
     })

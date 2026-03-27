@@ -19,9 +19,9 @@ function renderLandingPage() {
                 <span class="hero-title-gradient">Detection with AI</span>
             </h1>
             <p class="hero-subtitle">
-                MediScan AI uses advanced deep learning to detect Pneumonia and Tuberculosis 
-                from chest X-rays and CT scans — delivering faster, more accurate diagnosis 
-                to assist healthcare professionals.
+                MediScan AI uses advanced deep learning to detect diseases from chest X-rays, 
+                brain MRIs, skin images, retinal scans, and bone X-rays — delivering faster, 
+                more accurate diagnosis to assist healthcare professionals.
             </p>
             <div class="hero-actions">
                 <button class="btn btn-primary btn-lg" onclick="navigateTo('signup')">
@@ -31,9 +31,9 @@ function renderLandingPage() {
                     Sign In
                 </button>
             </div>
-            <div class="hero-stats">
+                <div class="hero-stats">
                 <div class="hero-stat">
-                    <div class="hero-stat-value">98.5%</div>
+                    <div class="hero-stat-value">95%+</div>
                     <div class="hero-stat-label">Detection Accuracy</div>
                 </div>
                 <div class="hero-stat">
@@ -41,8 +41,8 @@ function renderLandingPage() {
                     <div class="hero-stat-label">Analysis Time</div>
                 </div>
                 <div class="hero-stat">
-                    <div class="hero-stat-value">3</div>
-                    <div class="hero-stat-label">Disease Classes</div>
+                    <div class="hero-stat-value">5</div>
+                    <div class="hero-stat-label">Scan Types</div>
                 </div>
             </div>
         </div>
@@ -185,8 +185,8 @@ function renderHomePage() {
                 Welcome to <span class="hero-title-gradient">MediScan AI</span>
             </h1>
             <p class="home-hero-desc">
-                Upload chest X-rays or CT scans and let our AI analyze them instantly. 
-                Detect Pneumonia and Tuberculosis with high accuracy using deep learning technology.
+                Upload medical images and let our AI analyze them instantly. 
+                Detect diseases across 5 scan types — chest X-rays, brain MRI, skin lesions, retinal scans, and bone X-rays.
             </p>
             <button class="btn btn-primary btn-lg" onclick="navigateTo('scan')">
                 🔬 Start New Scan
@@ -272,8 +272,40 @@ function renderScanPage() {
     <div class="scan-page">
         <div class="scan-header">
             <h1>🔬 Upload Medical Scan</h1>
-            <p>Drag & drop or click to upload a chest X-ray or CT scan image for AI analysis</p>
+            <p>Select the scan type, then upload your medical image for AI-powered analysis</p>
         </div>
+
+        <div class="scan-type-section">
+            <h3 class="scan-type-label">Select Scan Type</h3>
+            <div class="scan-type-grid" id="scan-type-grid">
+                <div class="scan-type-card selected" data-type="chest_xray" onclick="selectScanType(this)">
+                    <div class="scan-type-icon">🫁</div>
+                    <div class="scan-type-name">Chest X-ray</div>
+                    <div class="scan-type-desc">Pneumonia detection</div>
+                </div>
+                <div class="scan-type-card" data-type="brain_tumor" onclick="selectScanType(this)">
+                    <div class="scan-type-icon">🧠</div>
+                    <div class="scan-type-name">Brain MRI</div>
+                    <div class="scan-type-desc">Tumor classification</div>
+                </div>
+                <div class="scan-type-card" data-type="skin_lesion" onclick="selectScanType(this)">
+                    <div class="scan-type-icon">🔬</div>
+                    <div class="scan-type-name">Skin Lesion</div>
+                    <div class="scan-type-desc">Melanoma screening</div>
+                </div>
+                <div class="scan-type-card" data-type="retinal" onclick="selectScanType(this)">
+                    <div class="scan-type-icon">👁️</div>
+                    <div class="scan-type-name">Retinal OCT</div>
+                    <div class="scan-type-desc">Retinal disease detection</div>
+                </div>
+                <div class="scan-type-card" data-type="bone_fracture" onclick="selectScanType(this)">
+                    <div class="scan-type-icon">🦴</div>
+                    <div class="scan-type-name">Bone X-ray</div>
+                    <div class="scan-type-desc">Fracture detection</div>
+                </div>
+            </div>
+        </div>
+
         <div class="upload-zone" id="upload-zone" onclick="document.getElementById('scan-file-input').click()"
              ondragover="handleDragOver(event)" ondragleave="handleDragLeave(event)" ondrop="handleDrop(event)">
             <input type="file" id="scan-file-input" accept=".png,.jpg,.jpeg" onchange="handleFileSelect(event)">
@@ -303,9 +335,20 @@ function renderScanPage() {
 
 // ─── Analysis Result Page ────────────────────────────────────────────
 function renderResultPage(data) {
-    const predClass = data.prediction.toLowerCase();
+    const predClass = data.prediction.toLowerCase().replace(' ', '');
     const riskColor = data.risk_score > 60 ? 'var(--danger)' : data.risk_score > 30 ? 'var(--warning)' : 'var(--success)';
     const confColor = data.confidence > 80 ? 'var(--success)' : data.confidence > 60 ? 'var(--warning)' : 'var(--danger)';
+
+    // Determine if prediction is "normal/safe" or concerning
+    const safeClasses = ['normal', 'notumor', 'benign', 'notfractured'];
+    const isSafe = safeClasses.includes(predClass);
+    const predIcon = isSafe ? '✅' : '⚠️';
+    const predBadgeClass = isSafe ? 'prediction-normal' : 'prediction-abnormal';
+
+    const scanTypeDisplay = data.scan_type_display || data.scan_type || 'Medical Scan';
+    const modelBadge = data.real_model 
+        ? '<span class="model-badge real">🤖 Real AI Model</span>' 
+        : '<span class="model-badge simulated">⚡ Simulated Model</span>';
 
     let insightsHtml = '';
     if (data.insights && data.insights.length) {
@@ -320,11 +363,12 @@ function renderResultPage(data) {
     <div class="result-page">
         <div class="result-header">
             <h1>📋 Analysis Results</h1>
+            <p class="result-scan-type">${scanTypeDisplay} ${modelBadge}</p>
         </div>
 
         <div class="text-center mb-3">
-            <div class="prediction-badge prediction-${predClass}">
-                ${predClass === 'normal' ? '✅' : predClass === 'pneumonia' ? '⚠️' : '🔴'}
+            <div class="prediction-badge ${predBadgeClass}">
+                ${predIcon}
                 ${data.prediction}
             </div>
         </div>
